@@ -14,7 +14,7 @@ from census import Census
 
 from us import states
 
-#c = Census("7db67c2f72a14f9f2c0138b925d00cb7dbd4061b")
+c = Census("7db67c2f72a14f9f2c0138b925d00cb7dbd4061b")
 #df = c.acs.get(('NAME', 'B25034_010E'), {'for': 'state:%s' % states.MD.fips})
 #print(df)
 
@@ -31,7 +31,7 @@ class apiGUI:
     def __init__(self, window):
         self.window = window
         apiGUI.state_selections = []
-        
+
         def close_all():
             window.destroy()
         
@@ -54,7 +54,6 @@ class apiGUI:
             pwin.withdraw()
             state_win = tk.Toplevel(window)
             #state_win.protocol("WM_DELETE_WINDOW", on_closing(self))
-            self.len_max=0
             self.vtable=[str(st) for st in states.STATES]
             self.state_list_box = tk.Listbox(state_win, selectmode="multiple", listvariable=self.vtable)
             fill_listbox(self,self.state_list_box,self.vtable)
@@ -71,7 +70,6 @@ class apiGUI:
             pwin.withdraw()
             var_win = tk.Toplevel(window)
             #state_win.protocol("WM_DELETE_WINDOW", on_closing(self))
-            self.len_max=0
             self.vtable=[str(st) for st in range(0,10)]
             self.var_list_box = tk.Listbox(var_win, selectmode="multiple", listvariable=self.vtable)
             fill_listbox(self,self.var_list_box,self.vtable)
@@ -99,3 +97,14 @@ tk.mainloop()
 
 print(apiGUI.state_selections)
 print(apiGUI.var_selections)
+
+states_fip = states.mapping('name', 'fips')
+
+stfips = [str(states_fip[st]) for st in apiGUI.state_selections]
+print(stfips)
+df = pd.DataFrame()#columns = ['B25034_010E', 'NAME', 'state'])
+for fips in stfips:
+    dfst = pd.DataFrame(c.acs.get(('NAME', 'B25034_010E'), {'for': 'state:%s' % fips}))
+    df=pd.concat([df,dfst])
+print(df)
+
