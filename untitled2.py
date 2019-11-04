@@ -66,6 +66,7 @@ class qaGUI:
         qaGUI.cat_selected = []
         qaGUI.cat_selected_match = []
         qaGUI.noselection = 0
+        qaGUI.probselection = 0
         qaGUI.catlist = catlist
         #to change later
         qaGUI.vod =tk.StringVar()
@@ -157,7 +158,7 @@ class qaGUI:
             update_dd(self)
         
             
-            self.labelt = tk.Label(table_select, text="Select Tables:", anchor="w", font="Arial 12 bold")
+            self.labelt = tk.Label(table_select, text="Select One Table:", anchor="w", font="Arial 12 bold")
             self.s = tk.Scrollbar(table_select)
             self.labelt.grid(row=0,column=0,sticky='nsew')
             self.s.grid(row=2,column=1,sticky='ns')
@@ -192,7 +193,23 @@ class qaGUI:
             labelv.grid(row=0,column=0)
             sv = tk.Scrollbar(var_win)
             sv.grid(row=1,column=1,sticky='ns')
-            vvar=['All'] + fvariable1
+            fvariable2 = []
+            fvariable4  = []
+            for x in fvariable1:
+                z = x.upper()
+                y = z.lower()
+                if x in list(qaGUI.d):
+                    fvariable2.append(z)
+                if y in list(qaGUI.d):
+                    fvariable2.append(y)
+            for k in range(0,len(qaGUI.cat_selected)):
+                if "Young Incumbent Firms" in qaGUI.cat_selected[k]:
+                    if "age" in qaGUI.x:
+                        fvariable4 = ["firm_startup_rate", "employment-weighted_startup_rate"]
+            if "all" in qaGUI.x:
+                fvariable4 = ["firm_death_rate", "employment-weighted_exit_rate"]
+            fvariable5 = ["shemp", "shdenom"]
+            vvar=['All'] + fvariable2+fvariable4+fvariable5
             self.list_boxv = tk.Listbox(var_win, selectmode="multiple", listvariable=vvar)
             fill_listbox(self, self.list_boxv, vvar)
             self.list_boxv.grid(row=1,column=0,sticky='nsew')
@@ -209,23 +226,31 @@ class qaGUI:
             buttonr.grid(row=12,column=0, columnspan=1)
         
         def check(self, pwin,x,cat_vars, listboxWidgets):
-                    qaGUI.noselection = 0
-                    meetlen=len(listboxWidgets)
-                    check=0
+            qaGUI.noselection = 0
+            qaGUI.probselection = 0
+            meetlen=len(listboxWidgets)
+            check=0
 
-                    for q in listboxWidgets:
+            for q in listboxWidgets:
 
-                        ndex = q.curselection()
-
-                        if ndex == ():
-                            qaGUI.noselection = 1
-                            pwin.destroy()
-                            #cat_layout(x)
-                            break
-                        else:
-                            check +=1
-                    if check == meetlen:
-                        collection(self, pwin, x,cat_vars, listboxWidgets)
+                ndex = q.curselection()
+                selection = [q.get(y) for y in ndex]
+                if ndex == ():
+                    qaGUI.noselection = 1
+                    pwin.destroy()
+                    cat_selection(self, 0, qaGUI.table_selections)
+                    break
+                if "Young" in selection and "Young Incumbent Firms" in selection:
+                    qaGUI.probselection += 1
+                    if "Young Incumbent Firms" in selection:
+                        qaGUI.probselection += 1
+                        pwin.destroy()
+                        cat_selection(self, 0, qaGUI.table_selections)
+                        break
+                else:
+                    check +=1
+            if check == meetlen:
+                collection(self, pwin, x,cat_vars, listboxWidgets)
         def collection(self, pwin, x,cat_vars, listboxWidgets):
             for q in listboxWidgets:
                 #get_choices(pwin, q, "cat_selected")
@@ -236,22 +261,23 @@ class qaGUI:
             for y in cat_vars:
                 qaGUI.cat_selected_match.append([x,y])
             pwin.destroy()
+            var_window(self, pwin)
         
         
         def cat_list(self, x):
             roll_vars = []
-            if "sic" in x:
-                roll_vars = ["combined1", "combined2"]
+            if "fage4" in x:
+                roll_vars = ["Young Incumbent Firms", "Young", "Old"]
             if "fsize" in x:
-                roll_vars = ["combined3", "combined4"]
+                roll_vars = ["Small", "Medium", "Large"]
             return roll_vars
         
         def cat_selection(self, pwin, y):
-
             qaGUI.multi = qaGUI.check.get()
-            pwin.withdraw()
-            x = y[0]
-            qaGUI.d = pd.read_csv(qaGUI.bd+x+".csv")
+            if pwin != 0:
+                pwin.withdraw()
+            qaGUI.x = y[0]
+            qaGUI.d = pd.read_csv(qaGUI.bd+qaGUI.x+".csv")
            
             labelWidgets=[]
             listboxWidgets=[]
@@ -268,17 +294,15 @@ class qaGUI:
             cat_win.grid_rowconfigure(3,weight=1)
             cat_win.grid_rowconfigure(4,weight=1)
 
-            cat_win.labelt = tk.Label(cat_win, text=str(x), anchor="w", font="Arial 12 bold")
+            cat_win.labelt = tk.Label(cat_win, text=str(qaGUI.x), anchor="w", font="Arial 12 bold")
             cat_win.labelt.grid(row=0,column=0,sticky='nsew')
             qaGUI.cat_vars = []
-            
-            
                 
             for j in qaGUI.catlist:
                 if j in list(qaGUI.d):
                     qaGUI.cat_vars.append(j)
             if qaGUI.cat_vars == []:
-                collection(self, cat_win, x, qaGUI.cat_vars, listboxWidgets)
+                collection(self, cat_win, qaGUI.x, qaGUI.cat_vars, listboxWidgets)
             else:
                 for i,y in zip(range(0, len(qaGUI.cat_vars)),qaGUI.cat_vars):
                     u = qaGUI.d[y].unique()
@@ -313,16 +337,19 @@ class qaGUI:
                         scrollWidgets[-1]['command'] = listboxWidgets[-1].yview
                         listboxWidgets[-1].config(width="0",height=10)
 
-                buttonb = tk.Button(cat_win, text = "Submit", command = lambda:check(self, cat_win, x,qaGUI.cat_vars, listboxWidgets))
+                buttonb = tk.Button(cat_win, text = "Submit", command = lambda:check(self, cat_win, qaGUI.x,qaGUI.cat_vars, listboxWidgets))
                 buttonb.grid(row=6,column=0, columnspan=1)
                 buttonc = tk.Button(cat_win, text = "Restart", command = restart)
                 buttonc.grid(row=7,column=0, columnspan=1)
                 if qaGUI.noselection == 1:
                     labelb = tk.Label(cat_win, text="Please choose at least one option for each variable", anchor="w",font="Arial 12")
                     labelb.grid(row=8,column=0, columnspan =2)
+                if qaGUI.probselection == 2:
+                    labelb = tk.Label(cat_win, text="Overlapping Categories Chosen", anchor="w",font="Arial 12")
+                    labelb.grid(row=9,column=0, columnspan =2)
                 window.wait_window(cat_win)
                 
-            var_window(self, pwin)
+            
                 
         def open_confirm(self, pwin):
            # ndexv = pwin.list_boxv.curselection()
@@ -596,7 +623,39 @@ if __name__=="__main__":
                 plt.savefig(filestring, bbox_inches="tight", pad_inches=.2)
                 print("Writing "+filestring)
                 plt.clf()
-    
+            if len(keymatchpos) == 4:
+                plotx=[]
+                ploty=[]
+                labell=[]
+                for i in fvariable3:
+                    for k,l in zip(range(0,len(qaGUI.cat_selected[keymatchpos[0]])),qaGUI.cat_selected[keymatchpos[0]]):
+                        for m,n in zip(range(0,len(qaGUI.cat_selected[keymatchpos[1]])),qaGUI.cat_selected[keymatchpos[1]]):
+                            for o,p in zip(range(0,len(qaGUI.cat_selected[keymatchpos[2]])),qaGUI.cat_selected[keymatchpos[2]]):
+                                for q,r in zip(range(0,len(qaGUI.cat_selected[keymatchpos[3]])),qaGUI.cat_selected[keymatchpos[3]]):
+                                    xa = table.loc[(table[str(keymatch[0][1])].astype(str)==str(l)) & (table[str(keymatch[1][1])].astype(str)==str(n)) & (table[str(keymatch[2][1])].astype(str)==str(p)) & (table[str(keymatch[3][1])].astype(str)==str(r)), "year2"]
+                                    ya = table.loc[(table[str(keymatch[0][1])].astype(str)==str(l)) & (table[str(keymatch[1][1])].astype(str)==str(n)) & (table[str(keymatch[2][1])].astype(str)==str(p)) & (table[str(keymatch[3][1])].astype(str)==str(r)), i]
+                                    plotx.append(xa)
+                                    ploty.append(ya)
+                                    j = str(i)+" | "+str(keymatch[0][1])+": "+str(l)+" | "+str(keymatch[1][1])+": "+str(n)+" | "+str(keymatch[2][1])+": "+str(p)
+                                    labell.append(j)
+                for x,y,z in zip(plotx,ploty,labell):
+                    plt.plot(x,y,marker = 'o', markersize=3, label=z)
+                fig = plt.gcf()
+                fi = len(plotx)*.25
+                fig.set_size_inches(6, 3.75+float(fi))
+                plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2))
+                plttitle ="Table: "+str(table.name)+"""
+    """+str(min(plt.gca().get_xlim())+2)[:4]+"-"+str(max(plt.gca().get_xlim())-1)[:4] 
+                plt.title(plttitle,loc='center')
+                #plt.ylabel(str(i).capitalize())
+                plt.xlabel("Year")
+                plt.gca().yaxis.set_major_formatter(mpl.ticker.StrMethodFormatter('{x:,.0f}'))
+                plt.tight_layout()
+                filestring = str(odirectory)+str(table.name)+namestring+".png"
+                filestring = filestring.replace(" ","_").replace(")","").replace("(","")
+                plt.savefig(filestring, bbox_inches="tight", pad_inches=.2)
+                print("Writing "+filestring)
+                plt.clf()
     
     
     def plotting(table,keymatch, keymatchpos):
@@ -702,25 +761,91 @@ if __name__=="__main__":
             #bdsdatas.name = i
             keymatch = [s for s in qaGUI.cat_selected_match if i in s[0]]
             keymatchpos = [p for p, c in enumerate(qaGUI.cat_selected_match) if c[0] == i]
-            fvariable3=[]
-            selected_variables1 = [item.lower() for item in qaGUI.selected_variables]
-            for h,j in zip(qaGUI.selected_variables, selected_variables1):
-                if h in list(bdsdatas):
-                    fvariable3.append(h)
-                if j in list(bdsdatas):
-                    fvariable3.append(j)
+            fvariable3=[item.lower() for item in qaGUI.selected_variables]
+#            selected_variables1 = [item.lower() for item in qaGUI.selected_variables]
+#            for h,j in zip(qaGUI.selected_variables, selected_variables1):
+#                if h in list(bdsdatas):
+#                    fvariable3.append(h)
+#                if j in list(bdsdatas):
+#                    fvariable3.append(j)
+                
      
     
     listcat=qaGUI.cat_vars + ["year2"]
     for k in range(0,len(qaGUI.cat_selected)):
-        if "combined1" in qaGUI.cat_selected[k]:
-            bdsdatas.loc[bdsdatas["sic1"] == 7, "sic"] = "combined1"
-            bdsdatas.loc[bdsdatas["sic1"] == 10, "sic1"] = "combined1"
-        if "combined3" in qaGUI.cat_selected[k]:
-            bdsdatas.loc[bdsdatas["fsize"] == "a) 1 to 4", "fsize"] = "combined3"
-            bdsdatas.loc[bdsdatas["fsize"] == "b) 5 to 9", "fsize"] = "combined3"
+        if "Young Incumbent Firms" in qaGUI.cat_selected[k]:
+            for age in ['fage4', 'Fage4']:
+                if age in list(bdsdatas):
+                    bdsdatas.loc[bdsdatas[age] == "b) 1", age] = "Young Incumbent Firms"
+                    bdsdatas.loc[bdsdatas[age] == "c) 2", age] = "Young Incumbent Firms"
+                    bdsdatas.loc[bdsdatas[age] == "d) 3", age] = "Young Incumbent Firms"
+                    bdsdatas.loc[bdsdatas[age] == "e) 4", age] = "Young Incumbent Firms"
+                    bdsdatas.loc[bdsdatas[age] == "f) 5", age] = "Young Incumbent Firms"
+                    bdsdatas = bdsdatas.groupby(listcat).sum().reset_index()
+        if "Young" in qaGUI.cat_selected[k]:
+            for age in ['fage4', 'Fage4']:
+                if age in list(bdsdatas):
+                    bdsdatas.loc[bdsdatas[age] == "a) 0", age] = "Young"
+                    bdsdatas.loc[bdsdatas[age] == "b) 1", age] = "Young"
+                    bdsdatas.loc[bdsdatas[age] == "c) 2", age] = "Young"
+                    bdsdatas.loc[bdsdatas[age] == "d) 3", age] = "Young"
+                    bdsdatas.loc[bdsdatas[age] == "e) 4", age] = "Young"
+                    bdsdatas = bdsdatas.groupby(listcat).sum().reset_index()
+        if "Old" in qaGUI.cat_selected[k]:
+            for age in ['fage4', 'Fage4']:
+                if age in list(bdsdatas):
+                    bdsdatas.loc[bdsdatas[age] == "f) 5", age] = "Old"
+                    bdsdatas.loc[bdsdatas[age] == "g) 6 to 10", age] = "Old"
+                    bdsdatas.loc[bdsdatas[age] == "h) 11 to 15", age] = "Old"
+                    bdsdatas.loc[bdsdatas[age] == "i) 16 to 20", age] = "Old"
+                    bdsdatas.loc[bdsdatas[age] == "j) 21 to 25", age] = "Old"
+                    bdsdatas.loc[bdsdatas[age] == "k) 26+", age] = "Old"
+                    bdsdatas = bdsdatas.groupby(listcat).sum().reset_index()
+        if "Small" in qaGUI.cat_selected[k]:
+            for size in ['fsize', 'ifsize', 'Fsize', 'Ifsize']:
+                if size in list(bdsdatas):
+                    bdsdatas.loc[bdsdatas[size] == "a) 1 to 4", size] = "Small"
+                    bdsdatas.loc[bdsdatas[size] == "g) b) 5 to 9", size] = "Small"
+                    bdsdatas.loc[bdsdatas[size] == "c) 10 to 19", size] = "Small"
+                    bdsdatas = bdsdatas.groupby(listcat).sum().reset_index()
+        if "Medium" in qaGUI.cat_selected[k]:
+            for size in ['fsize', 'ifsize', 'Fsize', 'Ifsize']:
+                if size in list(bdsdatas):
+                    bdsdatas.loc[bdsdatas[size] == "d) 20 to 49", size] = "Medium"
+                    bdsdatas.loc[bdsdatas[size] == "e) 50 to 99", size] = "Medium"
+                    bdsdatas.loc[bdsdatas[size] == "f) 100 to 249", size] = "Medium"
+                    bdsdatas.loc[bdsdatas[size] == "g) 250 to 499", size] = "Medium"
             bdsdatas = bdsdatas.groupby(listcat).sum().reset_index()
+        if "Large" in qaGUI.cat_selected[k]:
+            for size in ['fsize', 'ifsize', 'Fsize', 'Ifsize']:
+                if size in list(bdsdatas):
+                    bdsdatas.loc[bdsdatas[size] == "h) 500 to 999", size] = "Large"
+                    bdsdatas.loc[bdsdatas[size] == "i) 1000 to 2499", size] = "Large"
+                    bdsdatas.loc[bdsdatas[size] == "j) 2500 to 4999", size] = "Large"
+                    bdsdatas.loc[bdsdatas[size] == "k) 5000 to 9999", size] = "Large"
+                    bdsdatas.loc[bdsdatas[size] == "l) 10000+", size] = "Large"
+                    bdsdatas = bdsdatas.groupby(listcat).sum().reset_index()
+    if "firm_startup_rate" in fvariable3:
+        bdsdatas['sumall'] = bdsdatas.groupby(["year2"]).sum().reset_index()["firms"]
+        bdsdatas["firm_startup_rate"] = bdsdatas["firms"]/bdsdatas['sumall']
+    if "employment-weighted_startup_rate" in fvariable3:
+        bdsdatas['sumall'] = bdsdatas.groupby(["year2"]).sum().reset_index()["emp"]
+        bdsdatas["employment-weighted_startup_rate"] = bdsdatas["job_creation"]/bdsdatas["sumall"]
+    if "firm_death_rate" in fvariable3:
+        bdsdatas['sumall'] = bdsdatas.groupby(["year2"]).sum().reset_index()["firms"]
+        bdsdatas["firm_death_rate"] =  bdsdatas["Firmdeath_Firms"]/bdsdatas['sumall']
         
+    if "employment-weighted_exit rate" in fvariable3:
+        bdsdatas['sumall'] = bdsdatas.groupby(["year2"]).sum().reset_index()["emp"]
+        bdsdatas["firm_death_rate"] =  bdsdatas["Firmdeath_emp"]/bdsdatas['sumall']
+    if "shemp" in fvariable3:
+        bdsdatas['sumall'] = bdsdatas.groupby(["year2"]).sum().reset_index()["emp"]
+        bdsdatas["shemp"] =  bdsdatas["emp"]/bdsdatas['sumall']
+    if "shdenom" in fvariable3:
+        bdsdatas['sumall'] = bdsdatas.groupby(["year2"]).sum().reset_index()["denom"]
+        bdsdatas["shdenom"] =  bdsdatas["denom"]/bdsdatas['sumall']
+
+                
     
     
     if len(keymatchpos) != 0:
