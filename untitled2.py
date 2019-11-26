@@ -11,7 +11,7 @@ Program Name: graphic_gui3c.py
 Created By: Timothy Beggs
 Date Created: 9/23/2019
 
-Objective: Produce a gui to quickly graph time series from BDS-LBD release tables
+Objective: Produce a gui to quickly graph time series using custom rollup variables from BDS-LBD release tables
 
 Input Files: BDS-LBD release tables- (see table_dict not limited to list but dependent on variables and categorical
              variables within tables defined by fvariableentry and catliststring). Data should be stored in folder specified by bdsdatadirectorystr
@@ -27,12 +27,8 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-import time
-import argparse
 import tkinter as tk
-import numpy as np
 import sys
-import datetime as dt
 
 #directory strings defaulted to app9 locations
 bdsdatadirectorystr = '/data/lbd/bitsi/ewdwork/BDS_QA_Release_Tables/'
@@ -58,7 +54,9 @@ def combine_funcs(*funcs):
             f(*args, **kwargs)
     return combined_func
 
+#main class gui to store primary variables and collect choices
 class qaGUI:
+    #inititiaion of class, initilize needed variables
     def __init__ (self, window):
         self.window = window
         qaGUI.check=tk.IntVar()
@@ -79,8 +77,7 @@ class qaGUI:
         qaGUI.vld =tk.StringVar()
         if qaGUI.vld.get()=="":
             qaGUI.ld = lookupdirectorystr
-        #qaGUI.bd = bdsdatadirectorystr
-        #qaGUI.check = 0
+
         #function to close GUI
         def close_all():
             window.destroy()
@@ -111,6 +108,42 @@ class qaGUI:
         #empty list box
         def clear_list(listbox):
             listbox.delete(0, tk.END)
+        
+        
+        def path_selection(self,pwin):
+            pwin.withdraw()
+            path_select = tk.Toplevel(window)
+           
+            path_select.protocol("WM_DELETE_WINDOW", on_closing)
+            path_select.grid_columnconfigure(0,weight=1)
+            path_select.grid_columnconfigure(1,weight=1)
+            path_select.grid_rowconfigure(0,weight=1)
+            path_select.grid_rowconfigure(1,weight=1)
+           
+            self.button1 = tk.Button(path_select, text = "Time-series plots for startups, exits, and young firms", command = lambda: young_firms(self, path_select))
+            self.button2 = tk.Button(path_select, text = "Time-series plots for firm age/size groups", command = lambda: age_size(self, path_select))
+           
+           
+            self.button1.grid(row=0,column=0)
+            self.button2.grid(row=1,column=0)
+       
+        def young_firms(self, pwin):
+            pwin.withdraw()
+            print(os.listdir(qaGUI.bd))
+            flist = ["bds_f_age_release.csv", "bds_f_all_release.csv "]
+            for f in flist:
+                print(f)
+                assert f in os.listdir(qaGUI.bd), str(f) + " not found in " + str(qaGUI.bd)
+                
+          #  d = 0
+        def age_size(self, pwin):
+            pwin.withdraw()
+            flist = ["bds_f_agesz_release.csv"]
+            for f in flist:
+                assert f in os.listdir(qaGUI.bd), str(f) + " not found in " + str(qaGUI.bd)
+               
+          #  d = 0
+        
         
         #edit defualt directory
         def edit_folder(pwin, listbox):
@@ -151,28 +184,21 @@ class qaGUI:
         
         #window for table selection
         def table_selection(self, pwin):
-            pwin.withdraw()
-           
-            table_select = tk.Toplevel(window)
-           
-            update_dd(self)
-        
-            
+            pwin.withdraw()     
+            table_select = tk.Toplevel(window)        
+            update_dd(self)   
             self.labelt = tk.Label(table_select, text="Select One Table:", anchor="w", font="Arial 12 bold")
             self.s = tk.Scrollbar(table_select)
             self.labelt.grid(row=0,column=0,sticky='nsew')
             self.s.grid(row=2,column=1,sticky='ns')
            
             self.table_list_box = tk.Listbox(table_select, selectmode = "single", listvariable = self.vtable)
-            fill_listbox(self, self.table_list_box, self.vtable)
-               
+            fill_listbox(self, self.table_list_box, self.vtable)          
             self.table_list_box.grid(row=2, column = 0, sticky = 'nsew')
             qaGUI.e = tk.Entry(table_select, width=self.len_max)
-            self.e.grid(row=1,column=0, sticky='nsew')
-           
+            self.e.grid(row=1,column=0, sticky='nsew')   
             self.check = tk.Checkbutton(table_select, text = "Plot all selections on one graph", variable = qaGUI.check)
-            self.check.grid(row=4, column=0)
-           
+            self.check.grid(row=4, column=0)         
             self.button1 = tk.Button(table_select, text = "Edit Input Directory", command = lambda: edit_folder(table_select, self.table_list_box))
             self.button1.grid(row=6,column=0)
             self.button = tk.Button(table_select, text = "Next", command = lambda:combine_funcs(get_choices(table_select, self.table_list_box, "table_selections"), cat_selection(self, table_select, qaGUI.table_selections)))
@@ -202,6 +228,7 @@ class qaGUI:
                     fvariable2.append(z)
                 if y in list(qaGUI.d):
                     fvariable2.append(y)
+            #create options for new rollup variables depented on choices selected
             for k in range(0,len(qaGUI.cat_selected)):
                 if "Young Incumbent Firms" in qaGUI.cat_selected[k]:
                     if "age" in qaGUI.x:
@@ -225,14 +252,13 @@ class qaGUI:
             buttonr = tk.Button(var_win, text = "Restart", command = restart)
             buttonr.grid(row=12,column=0, columnspan=1)
         
+        #confirm that at least one category selection is made as well as no overlapping categorical rollup categorical variables before running listbox choice collection
         def check(self, pwin,x,cat_vars, listboxWidgets):
             qaGUI.noselection = 0
             qaGUI.probselection = 0
             meetlen=len(listboxWidgets)
             check=0
-
             for q in listboxWidgets:
-
                 ndex = q.curselection()
                 selection = [q.get(y) for y in ndex]
                 if ndex == ():
@@ -251,6 +277,8 @@ class qaGUI:
                     check +=1
             if check == meetlen:
                 collection(self, pwin, x,cat_vars, listboxWidgets)
+                
+        #collection function for categorical choice list box
         def collection(self, pwin, x,cat_vars, listboxWidgets):
             for q in listboxWidgets:
                 #get_choices(pwin, q, "cat_selected")
@@ -262,8 +290,10 @@ class qaGUI:
                 qaGUI.cat_selected_match.append([x,y])
             pwin.destroy()
             var_window(self, pwin)
+    
         
-        
+        #check if custom categorical variables are needed
+        #x is the table name selected
         def cat_list(self, x):
             roll_vars = []
             if "fage4" in x:
@@ -272,6 +302,8 @@ class qaGUI:
                 roll_vars = ["Small", "Medium", "Large"]
             return roll_vars
         
+        #window for category selection
+        #y is the table name selected
         def cat_selection(self, pwin, y):
             qaGUI.multi = qaGUI.check.get()
             if pwin != 0:
@@ -350,10 +382,8 @@ class qaGUI:
                 window.wait_window(cat_win)
                 
             
-                
+        #define output folder destination
         def open_confirm(self, pwin):
-           # ndexv = pwin.list_boxv.curselection()
-            #qaGUI.selected_variables=[owindow.list_boxv.get(x) for x in ndexv]
             pwin.withdraw()
             list_params = tk.Toplevel()
             list_params.protocol("WM_DELETE_WINDOW", on_closing)
@@ -368,27 +398,16 @@ class qaGUI:
             list_params.grid_rowconfigure(6,weight=1)
             list_params.grid_rowconfigure(7,weight=1)
             list_params.grid_rowconfigure(8,weight=1)
-            list_params.grid_rowconfigure(9,weight=1)
-            
+            list_params.grid_rowconfigure(9,weight=1)     
             selected_variables = []
             if selected_variables == []:
                     selected_variables = "All"    
             if 'All' in selected_variables:
                 selected_variables = "All"
-
             vod = tk.StringVar()
-
-            #labelall = tk.Label(list_params, text="Current Selections:", anchor="w",font="Arial 12 bold")
-            #labeldd = tk.Label(list_params, text="High Level Data Directory:", anchor="w",font="Arial 10")
-            labelod = tk.Label(list_params, text="Out Directory:", anchor="w",font="Arial 10")
-            
-            #labelhda = tk.Entry(list_params, fg='grey',font="Arial 10",width=len(qaGUI.hdd.get()))
-            labeloda = tk.Entry(list_params, fg='grey',font="Arial 10",width=len(qaGUI.vod.get()))
-            
+            labelod = tk.Label(list_params, text="Out Directory:", anchor="w",font="Arial 10")           
+            labeloda = tk.Entry(list_params, fg='grey',font="Arial 10",width=len(qaGUI.vod.get()))            
             vod.set(qaGUI.od)
-            
-            #labelall.grid(row=1,column=0)
-            #labeldd.grid(row=3,column=0)
             labelod.grid(row=8,column=0)    
 
             # when typing on box for out directory
@@ -403,26 +422,22 @@ class qaGUI:
             # default fill for out directory
             def handle_enter(txt):
                 handle_focus_out('example')
-                   
-            
-            labeloda.insert(0,qaGUI.vod.get())
-            
+                       
+            labeloda.insert(0,qaGUI.vod.get())  
             labeloda.bind("<FocusIn>", handle_focus_in)
             labeloda.bind("<FocusOut>", handle_focus_out)
-            labeloda.bind("<Return>", handle_enter)
-            
-            labeloda.grid(row=8,column=1,sticky='we')    
-            
+            labeloda.bind("<Return>", handle_enter)   
+            labeloda.grid(row=8,column=1,sticky='we')       
             buttona = tk.Button(list_params, text = "Submit", command = close_all)
             buttona.grid(row=9,column=0, columnspan=1)
             buttonr = tk.Button(list_params, text = "Restart", command = restart)
             buttonr.grid(row=9,column=1, columnspan=1)  
         
-        table_selection(self, window)
-   
+        #table_selection(self, window)
+        path_selection(self, window)
 
    
-#initialization
+#initialization of program call
 if __name__=="__main__":
     table_dict_base = {    'bds_f_all_release.csv': ['bds_f_all_release', 1]        ,
         'bds_e_all_release.csv': ['bds_e_all_release', 2]        ,
@@ -476,16 +491,17 @@ if __name__=="__main__":
     
     table_dict=table_dict_base.copy()
     
+    #call primary gui class
     master = tk.Tk()
     window = qaGUI(master)
     tk.mainloop()
     
-    
+    #redefine data directory string (this may change dependent on how default parameters will work)
     bdsdirectory = bdsdatadirectorystr
-    #    ddirectory = args.datadirectory
     ldirectory = lookupdirectorystr
     odirectory= outdirectorystr
     
+    #attempt to collect updated out directory
     try: window.od
     except AttributeError: window.od = None
     if window.od != None:
@@ -493,14 +509,15 @@ if __name__=="__main__":
            odirectory  = str(window.od)    
     if not odirectory.endswith("/"):
         odirectory= odirectory + "/"
-        
+    
+    #try to collect bds directory
     try: window.bd
     except AttributeError: window.bd = None
     if window.bd != None:
         if str(window.bd) !="":
            bdsdirectory  = str(window.bd)
            
-    
+    #plotting function for all selections on one graph
     def plotting_multi(table,keymatch, keymatchpos, namestring):
             if len(keymatchpos) == 0:
                 plotx=[]
@@ -657,7 +674,7 @@ if __name__=="__main__":
                 print("Writing "+filestring)
                 plt.clf()
     
-    
+    #plotting for each selection on different graphs
     def plotting(table,keymatch, keymatchpos):
         if len(keymatchpos) == 0:
             for i in fvariable3:
@@ -755,22 +772,16 @@ if __name__=="__main__":
                                 print("Writing "+filestring)
                                 plt.clf()
     
-    
+    #create copy of read in table and match categorical selections with variables
     for i in qaGUI.table_selections:
-            bdsdatas = qaGUI.d
-            #bdsdatas.name = i
-            keymatch = [s for s in qaGUI.cat_selected_match if i in s[0]]
-            keymatchpos = [p for p, c in enumerate(qaGUI.cat_selected_match) if c[0] == i]
-            fvariable3=[item.lower() for item in qaGUI.selected_variables]
-#            selected_variables1 = [item.lower() for item in qaGUI.selected_variables]
-#            for h,j in zip(qaGUI.selected_variables, selected_variables1):
-#                if h in list(bdsdatas):
-#                    fvariable3.append(h)
-#                if j in list(bdsdatas):
-#                    fvariable3.append(j)
+        bdsdatas = qaGUI.d
+        keymatch = [s for s in qaGUI.cat_selected_match if i in s[0]]
+        keymatchpos = [p for p, c in enumerate(qaGUI.cat_selected_match) if c[0] == i]
+        fvariable3=[item.lower() for item in qaGUI.selected_variables]
+
                 
      
-    
+    #create custom list of important categorical variables and define rollup variables
     listcat=qaGUI.cat_vars + ["year2"]
     for k in range(0,len(qaGUI.cat_selected)):
         if "Young Incumbent Firms" in qaGUI.cat_selected[k]:
@@ -847,7 +858,7 @@ if __name__=="__main__":
 
                 
     
-    
+    #rename msa and state level categorical variables
     if len(keymatchpos) != 0:
         listcheck = []
         for p in (0,len(keymatch)-1):
@@ -868,7 +879,7 @@ if __name__=="__main__":
         if "State" in listcheck:
             bdsdatas=bdsdatas.merge(qaGUI.lstate, left_on="State", right_on="state_fips")
             bdsdatas["State"] = bdsdatas["gui_label"] 
-    
+    #run graphing function depending on weather single graph was selected
     bdsdatas.name = i
     if qaGUI.multi == 1:
         namestring = "_multi_variable"
